@@ -76,7 +76,7 @@ def create_new_msisdn_and_adID():
     msisdn = content['msisdn']
     adID = content['adId']
     if (r.hexists(msisdn, adID)):
-        return 'This msisdn with the Ad_id already exists'
+        return jsonify({"message":'This msisdn with the Ad_id already exists'})
     else:
         r.hset(msisdn, adID, 1)
         if (r.hexists(msisdn, allClickedAds)):
@@ -101,7 +101,10 @@ def create_new_msisdn_and_adID():
 @app.route('/fetch-msisdn-ad-count', methods=['GET'])
 def getAllmsisdnCount():
     content = request.get_json(force=True)
-    msisdn = content['msisdn']
+    if not content:
+        return "Invalid Json"
+    else:
+        msisdn = content['msisdn']
     if r.hexists( msisdn, allClickedAds+str(msisdn)):
         numberOfClicks = r.hget(msisdn, allClickedAds+str(msisdn))
         return jsonify({'All Ads Clicked': {
@@ -109,7 +112,7 @@ def getAllmsisdnCount():
             'total count': str(numberOfClicks)
         }})
     else:
-        return 'This msisdn does not exist'
+        return jsonify({"Message":'This msisdn does not exist'})
 
 
 
