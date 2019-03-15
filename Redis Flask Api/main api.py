@@ -25,7 +25,6 @@ logger = logging.getLogger('redis_setup')
 # To calculate total time to get required result.
 t = time.process_time()
 
-AD_ID = 'adId'
 allClickedAds = 'allClickedAds'
 
 response = []
@@ -53,40 +52,49 @@ def populate_redis():
                 line_count += 1
             else:
                 if r.hexists(row[5], row[4]):
+
                     r.hincrby(row[5], row[4], 1)
+
+                    # count = r.hincrby(row[5], row[4], 1)
+
+                    #logger.debug("userID: " + str(row[5]) + ' adId: ' + str(row[4]) + ' exists count: ' + str(r.hget(row[5], row[4])))
 
 
                 else:
                     r.hset(row[5], row[4], 1)
 
-                if r.hexists(row[5],allClickedAds):
-                    r.incrby(allClickedAds, 1)
+                if r.hexists(row[5], allClickedAds+str(row[5])):
+                    r.hincrby( row[5] , allClickedAds+str(row[5]), 1)
+
+                    logger.debug(str(row[5]) + " exists new Count: " + str(r.hget(row[5], allClickedAds+str(row[5]))))
                 else:
-                    r.hset(row[5], allClickedAds,1)
+                    r.hset(row[5], allClickedAds+row[5], 1)
 
                 line_count += 1
 
 
 @app.route('/add-record', methods=['POST'])
-def create_new_mssisdn_and_adID(mssisdn, adID):
-    mssisdn = request.data
-    if (r.hexists(mssisdn, adID)):
-        return 'This mssisdn with the Ad_id already exists'
+def create_new_msisdn_and_adID():
+    content = request.get_json(force= True)
+    msisdn = content['msisdn']
+    adID = content['adId']
+    if (r.hexists(msisdn, adID)):
+        return 'This msisdn with the Ad_id already exists'
     else:
-        r.hset(mssisdn, adID, 1)
-        if (r.hexists(mssisdn, allClickedAds)):
-            r.incrby(allClickedAds, 1)
+        r.hset(msisdn, adID, 1)
+        if (r.hexists(msisdn, allClickedAds)):
+            r.incrby(allClickedAds+str(msisdn), 1)
 
             return jsonify({'Created': {
-                'mssisdn': mssisdn,
+                'msisdn': msisdn,
                 'adId': adID,
                 'count': 1,
-                'total count': r.hget(allClickedAds, mssisdn)
+                'total count': r.hget(msisdn, allClickedAds+str(msisdn))
             }})
         else:
-            r.hset(mssisdn, allClickedAds, 1)
+            r.hset(msisdn, allClickedAds+str(msisdn), 1)
             return jsonify({'Created': {
-                'mssisdn': mssisdn,
+                'msisdn': msisdn,
                 'adId': adID,
                 'count': 1,
                 'total count': 1
@@ -94,28 +102,43 @@ def create_new_mssisdn_and_adID(mssisdn, adID):
 
 
 @app.route('/fetch-msisdn-ad-count', methods=['GET'])
-def getAllmssisdnCount(mssisdn):
-    if r.hexists( mssisdn, allClickedAds):
-        numberOfClicks = r.hget(mssisdn, allClickedAds)
+def getAllmsisdnCount():
+    content = request.get_json(force=True)
+    msisdn = content['msisdn']
+    if r.hexists( msisdn, allClickedAds+str(msisdn)):
+        numberOfClicks = r.hget(msisdn, allClickedAds+str(msisdn))
         return jsonify({'All Ads Clicked': {
-            'mssisdn': mssisdn,
-            'total count': numberOfClicks
+            'msisdn': str(msisdn),
+            'total count': str(numberOfClicks)
         }})
     else:
-        return 'This mssisdn does not exist'
+        return 'This msisdn does not exist'
+
 
 
 @app.route('/fetch-msisdn-ad-id-record', methods=['GET'])
-def getmssisdnPerAd(mssisdn, adId):
-    if (r.hexists(mssisdn, adId)):
-        numberOfClicks = r.hget(mssisdn, adId)
-        return jsonify({'Created': {
-            'mssisdn': mssisdn,
+def getmsisdnPerAd():
+    content = request.get_json(force=True)
+
+    msisdn = content['msisdn']
+
+    adId = content['adId']
+
+    if (r.hexists(msisdn, adId)):
+        numberOfClicks = r.hget(msisdn, adId)
+        return jsonify({'Get msisdn per ID': {
+            'msisdn': msisdn,
             'adId': adId,
-            'count': numberOfClicks
+            'count': str(numberOfClicks)
         }})
     else:
-        return "This mssisdn hasn't clicked on the adId"
+        return jsonify({"Error" : "This msisdn hasn't clicked on the adId"})
+
+
+# @app.route('/get-all', methods=['GET'])
+# def getAll():
+#     id = request.args.get('id')
+#     return str(r.hgetall(str(id)))
 
 
 @app.errorhandler(404)
@@ -124,5 +147,6 @@ def not_found(error):
 
 
 if __name__ == '__main__':
+    r.flushall()
     populate_redis()
     app.run(debug=True)
