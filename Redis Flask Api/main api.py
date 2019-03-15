@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, make_response, request
 import redis
-import time
 import csv
 import logging
 
@@ -22,8 +21,6 @@ r = redis.Redis(
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(name)s %(levelname)s %(message)s')
 logger = logging.getLogger('redis_setup')
 
-# To calculate total time to get required result.
-t = time.process_time()
 
 allClickedAds = 'allClickedAds'
 
@@ -66,7 +63,7 @@ def populate_redis():
                 if r.hexists(row[5], allClickedAds+str(row[5])):
                     r.hincrby( row[5] , allClickedAds+str(row[5]), 1)
 
-                    logger.debug(str(row[5]) + " exists new Count: " + str(r.hget(row[5], allClickedAds+str(row[5]))))
+                    #logger.debug(str(row[5]) + " exists new Count: " + str(r.hget(row[5], allClickedAds+str(row[5]))))
                 else:
                     r.hset(row[5], allClickedAds+row[5], 1)
 
